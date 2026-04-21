@@ -608,6 +608,143 @@ Reverts user migration to previous state.
   "login": "akashr12"
 }
 ```
+# Repository Knowledge Document
+
+## Table of Contents
+
+1. [ikm-g2-okta-eventhook-service](#1-ikm-g2-okta-eventhook-service)
+2. [ikm-g2-okta-login-service](#2-ikm-g2-okta-login-service)
+3. [ontada-forms-service](#3-ontada-forms-service)
+4. [ontada-ikm-listener](#4-ontada-ikm-listener)
+5. [Architecture Overview](#architecture-overview)
+
+---
+
+## 1. ikm-g2-okta-eventhook-service
+
+**GitHub URL:** [https://github.com/mckesson/ikm-g2-okta-eventhook-service](https://github.com/mckesson/ikm-g2-okta-eventhook-service)
+
+**Tech Stack:** Java 17, Spring Boot, Spring Security, Spring Kafka, Lombok, SpringDoc OpenAPI (Swagger), Maven, Docker, Kubernetes
+
+**Domain:** Identity & Access Management (IAM) — Okta IDP Event Hook Integration
+
+### Description
+
+A publicly accessible microservice designed to handle callback events from the Okta Identity Provider (IDP). Event hooks are outbound calls from Okta, sent when specified events occur in the iKnowMed G2 organization. They take the form of HTTPS REST calls encapsulating information about the events in JSON objects. This service receives those payloads and produces them onto a Kafka topic for downstream consumption by the listener service. It is part of the G2-OKTA integration pipeline.
+
+### Key Features
+
+- Okta event hook callback handling with secret-based header authentication
+- Okta one-time API verification challenge support
+- Kafka message production to a configurable topic
+- Dead letter topic (DLT) support for failed message handling
+- Swagger/OpenAPI documentation
+- CORS configuration for cross-origin access
+- Spring Security with CSRF exemptions for the event hook endpoint
+
+### Keywords
+
+`Okta` `event hook` `Kafka producer` `IDP` `identity management` `iKnowMed` `G2` `microservice` `callback` `SASL_SSL` `Confluent` `Spring Boot` `ontada`
+
+---
+
+## 2. ikm-g2-okta-login-service
+
+**GitHub URL:** [https://github.com/mckesson/ikm-g2-okta-login-service](https://github.com/mckesson/ikm-g2-okta-login-service)
+
+**Tech Stack:** Java 17, Spring Boot, Spring Security, Spring Data MongoDB, Spring Data JPA (Oracle via ojdbc8, H2 for testing), Spring Kafka, FreeMarker (email templating), Retrofit2, Auth0 Java JWT, Lombok, BouncyCastle, SpringDoc OpenAPI, Commons Validator, Maven, Docker, Kubernetes
+
+**Domain:** Identity & Access Management (IAM) — Okta Self-Service User Migration
+
+### Description
+
+This microservice handles the APIs involved in self-service migration of Okta for non-federated users who are trying to log into the iKnowMed (G2) application for the first time after their practices are migrated to Okta. The service manages the full migration lifecycle including sending verification emails, validating verification codes, creating users in Okta, assigning users to groups, and mapping the newly created Okta user back to their G2 user account.
+
+### Key Features
+
+- JWT-based token authentication using RSA public key verification
+- Email verification code flow: generation, sending via SMTP, validation with configurable expiry
+- Okta user creation and provisioning via Okta API
+- Okta group management (adding users to groups, assigning group admin roles)
+- G2 backend user mapping via REST calls
+- FreeMarker-based email template rendering
+- MongoDB persistence for email-to-verification-code mappings
+- Swagger/OpenAPI documentation
+- Support for federated and non-federated user type differentiation (SuperUser, PracticeAdmin, PracticeUser)
+
+### Keywords
+
+`Okta` `user migration` `non-federated` `email verification` `MongoDB` `JWT` `iKnowMed` `G2` `self-service` `practice admin` `OIDC` `microservice` `Spring Boot` `ontada` `SMTP` `FreeMarker`
+
+---
+
+## 3. ontada-forms-service
+
+**GitHub URL:** [https://github.com/mckesson/ontada-forms-service](https://github.com/mckesson/ontada-forms-service)
+
+**Tech Stack:** Java, Spring Boot, Spring Data JPA, Spring Security, PostgreSQL, Hibernate, Lombok, ModelMapper, OpenCSV, JSON Patch, OWASP ESAPI, Maven, Docker, Kubernetes
+
+**Domain:** Healthcare / Oncology — Patient Forms Management
+
+### Description
+
+A common microservice for managing Ontada forms. It supports the full lifecycle of form templates, patient form submissions, packets (collections of forms), data dictionaries, and practice-specific form configurations. The service is built with a multi-tenant architecture where each tenant can manage their own form templates, customize them per practice, and maintain localized data dictionaries.
+
+### Key Features
+
+- Form template CRUD with versioning and effective date management
+- Patient form submission: save, update, delete, and retrieval with pagination
+- Practice-specific form template mappings with additional UI/data schema customization
+- Form data dictionary management with multi-language support (internationalization)
+- Packet management (grouping forms into packets with versioning)
+- Bulk CSV data import for dictionaries and key mappings
+- Multi-tenant architecture with tenant-scoped data isolation
+- Form template key mapping for data transformation (JSON path-based)
+- JPA auditing for created/modified tracking
+- JSON Patch support for partial updates
+- Paginated and sortable API responses
+- Integration with G2 patient proxy service
+
+
+
+### Keywords
+
+`Ontada` `forms` `patient forms` `form template` `healthcare` `oncology` `multi-tenant` `practice` `data dictionary` `packets` `PostgreSQL` `Spring Boot` `microservice` `versioning` `internationalization` `JSON schema` `CSV import`
+
+---
+
+## 4. ontada-ikm-listener
+
+**GitHub URL:** [https://github.com/mckesson/ontada-ikm-listener](https://github.com/mckesson/ontada-ikm-listener)
+
+**Tech Stack:** Java 17, Spring Boot, Spring Kafka, Spring Security, Lombok, Commons Collections, Maven, Docker, Kubernetes
+
+**Domain:** Identity & Access Management (IAM) — Okta Event Processing / Kafka Consumer
+
+### Description
+
+A Kafka consumer microservice that listens to a configured Kafka topic (fed by the `ikm-g2-okta-eventhook-service`), consumes Okta event messages, sorts the events by their published date, and forwards them to the G2 application backend (`/registerOktaEvents`) for processing. It uses basic authentication when calling the G2 backend and supports a dead letter topic (DLT) for messages that fail processing.
+
+### Key Features
+
+- Kafka topic consumption with manual acknowledgment (no auto-commit)
+- Event sorting by published date timestamp before forwarding to G2
+- Forwarding consumed events to G2 backend via REST POST
+- Dead letter topic (DLT) for error handling — failed messages are published to the DLT with original topic, error message, and stack trace headers
+- Basic authentication (username/password) for G2 backend REST calls
+- Configurable consumer group ID
+- Timeout-based DLT publishing (3-second timeout)
+
+### Keywords
+
+`Kafka consumer` `Okta events` `event listener` `dead letter topic` `DLT` `G2 backend` `iKnowMed` `microservice` `Spring Boot` `event processing` `SASL_SSL` `Confluent` `ontada` `manual acknowledgment`
+
+---
+
+
+- **Services 1 & 2** (`ikm-g2-okta-eventhook-service` → `ontada-ikm-listener`) work together as a Kafka producer-consumer pair for processing Okta event hooks.
+- **Service 3** (`ikm-g2-okta-login-service`) complements the Okta integration by handling the user onboarding/migration side.
+- **Service 4** (`ontada-forms-service`) serves a distinct domain within the broader Ontada healthcare platform — patient forms management.
 
 ## 9) Summary
 
